@@ -3,11 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="light">
 <title>Card Ledger — SMS Expense Dashboard</title>
 <style>
   :root{color-scheme:light;--bg:#f4f7f6;--panel:#fff;--ink:#172e2a;--muted:#4e655f;--line:#d5e0dc;--wash:#eaf5ef;--accent:#106348;--chart:#13815d;--warn:#a12e38;--warn-bg:#fceff0;--shadow:0 6px 24px #153d3010}
-  :root[data-theme=dark]{color-scheme:dark;--bg:#111d1a;--panel:#192924;--ink:#e7f2ed;--muted:#b0c6be;--line:#354e45;--wash:#213d33;--accent:#83e5ba;--chart:#5cc79d;--warn:#ffa5a9;--warn-bg:#45272d;--shadow:none}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
   [hidden]{display:none!important}
@@ -51,7 +50,7 @@
   .metrics,.grids,.settings-grid,.filters,.budget-grid{display:grid;gap:.8rem}
   .metrics{grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr))}
   .metric strong{display:block;font-size:clamp(1.12rem,2vw,1.58rem);letter-spacing:-.035em;margin:.27rem 0;overflow-wrap:anywhere}
-  .metrics button{text-align:left}
+  .flag-links{display:grid;gap:.35rem;justify-items:start;font-size:.8rem;font-weight:700}
   .section-head{margin-bottom:.8rem}
   .grids{grid-template-columns:repeat(3,minmax(0,1fr))}
   .wide{grid-column:span 2}
@@ -79,6 +78,12 @@
   td select{min-width:8rem}
   td small{display:block}
   td.amount{font-weight:730;font-variant-numeric:tabular-nums}
+  td.merchant{min-width:13rem;max-width:13rem;overflow-wrap:anywhere}
+  .review{margin-top:.35rem}
+  .review small{margin-top:.3rem}
+  .review .flag-context{display:none}
+  button.review-link{padding:0;border:0;background:none;color:var(--warn);text-align:left;text-decoration:underline}
+  button.review-link:hover:not(:disabled){background:none;color:var(--ink)}
   .warning{color:var(--warn)}
   .callout{border-radius:8px;padding:.6rem .75rem;background:var(--warn-bg);color:var(--warn);overflow-wrap:anywhere}
   .pagination{justify-content:flex-end;margin-top:.75rem}
@@ -92,6 +97,7 @@
   dl{display:grid;grid-template-columns:minmax(7rem,auto) 1fr;gap:.35rem .7rem;margin:.5rem 0}
   dt{font-weight:650} dd{margin:0;overflow-wrap:anywhere}
   footer{text-align:center;color:var(--muted);font-size:.84rem;margin-top:1.5rem}
+  @media(max-width:1100px){.review .flag-context{display:block}}
   @media(max-width:900px){.grids{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:580px){.grids{grid-template-columns:1fr}.wide{grid-column:auto}.top nav{order:3;width:100%}.filters .search{grid-column:1/-1}.trend-values{grid-template-columns:repeat(3,minmax(0,1fr))}}
 </style>
@@ -102,7 +108,6 @@
   <div class="top shell">
     <div class="brand"><span class="brand-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20M6 15h5"/></svg></span> Card Ledger</div>
     <nav aria-label="Dashboard sections"><a href="#overview">Overview</a><a href="#transactions">Transactions</a><a href="#budgets">Budgets</a><a href="#settings">Settings</a></nav>
-    <button id="theme" type="button" aria-pressed="false">Dark mode</button>
   </div>
 </header>
 <main class="shell" id="main">
@@ -126,7 +131,7 @@
       <div class="panel"><h3>By card</h3><div id="by-card" class="chart"></div></div>
     </div>
   </section>
-  <section class="panel" id="transactions" aria-labelledby="transactions-title">
+  <section class="panel" id="transactions" aria-labelledby="transactions-title" tabindex="-1">
     <div class="section-head"><div><h2 id="transactions-title">Transactions</h2><p class="muted">Flags are warnings, not proof of fraud. Compare flagged charges with your bank statement.</p></div><button id="export" type="button">Export filtered CSV</button></div>
     <form class="filters" id="filters">
       <label class="search">Search<input name="search" type="search" placeholder="Merchant, bank, card or SMS"></label>
@@ -137,16 +142,16 @@
       <label>Flag<select name="flag"><option value="">All flags</option><option value="flagged">Has warnings</option><option value="pending">Needs review</option><option value="clear">No active warning</option></select></label>
     </form>
     <div class="row"><p id="match-count" class="muted" role="status" tabindex="-1"></p><button id="clear" type="button">Clear filters</button></div>
-    <div class="table-wrap" role="region" aria-label="Transaction table, scroll horizontally for more columns" tabindex="0">
+    <div class="table-wrap" id="table-wrap" role="region" aria-label="Transaction table, scroll horizontally for more columns" tabindex="0">
       <table>
         <thead><tr>
+          <th scope="col" data-column="merchant"><button type="button" data-sort="merchant">Merchant / warning</button></th>
           <th scope="col" data-column="when"><button type="button" data-sort="when">Date / time</button></th>
-          <th scope="col" data-column="merchant"><button type="button" data-sort="merchant">Merchant</button></th>
           <th scope="col" data-column="card"><button type="button" data-sort="card">Bank / card</button></th>
           <th scope="col" data-column="category"><button type="button" data-sort="category">Category</button></th>
           <th scope="col" data-column="type"><button type="button" data-sort="type">Type</button></th>
           <th scope="col" data-column="value"><button type="button" data-sort="value">Amount / CAD</button></th>
-          <th scope="col">Review</th><th scope="col">SMS</th>
+          <th scope="col">SMS</th>
         </tr></thead>
         <tbody id="ledger"></tbody>
       </table>
@@ -226,11 +231,11 @@
       rows: P.importMessages([], P.dummy()).rows.map(row => ({ ...row, demo:true })),
       budgets: { Food:'550', Groceries:'400', Travel:'325', Shopping:'450', Bills:'320', Fuel:'170', Entertainment:'180', Other:'150' },
       rates: {}, overrides: {}, mapping:structuredClone(P.keywords), reviews:{},
-      threshold:'1000', preferences:{ theme:matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+      threshold:'1000', preferences:{
         pageSize:10, sort:'when', descending:true, filters:{ ...emptyFilters }, budgetMonth:'' }
     };
   }
-  let state, page = 1, ledger = [], filtered = [], activeDetail = null, unparsedLimit = 12;
+  let state, page = 1, ledger = [], filtered = [], activeDetail = null, detailSource = '', unparsedLimit = 12;
   const filterForm = $('filters');
   function storageWarning(message) {
     $('storage-warning').hidden = !message;
@@ -270,11 +275,6 @@
         review, pending:flags.length > 0 && !review };
     });
   }
-  function setTheme() {
-    const dark = state.preferences.theme === 'dark';
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-    $('theme').setAttribute('aria-pressed', dark);
-  }
   function renderMetrics() {
     const today = now();
     const current = monthKey(today), previous = monthKey(offsetMonth(today,-1));
@@ -289,6 +289,7 @@
     const average = purchases.length ? (gross + BigInt(purchases.length) / 2n) / BigInt(purchases.length) : null;
     const largest = purchases.reduce((big, row) => big === null || row.cad > big.cad ? row : big, null);
     const count = ledger.filter(row => row.pending).length;
+    const flaggedCount = ledger.filter(row => row.flags.length).length;
     const metrics = [
       ['Net spend this month', money(net), `${money(gross)} in purchases`],
       ['Change vs. last month', `${delta > 0n ? '+' : ''}${money(delta)}`, `${monthLabel(offsetMonth(today,-1))} net: ${money(last)}`],
@@ -298,14 +299,19 @@
     ];
     $('metrics').innerHTML = metrics.map(([label, value, note]) =>
       `<div class="metric"><small>${esc(label)}</small><strong>${esc(value)}</strong><small>${esc(note)}</small></div>`).join('') +
-      `<button class="metric" id="review-shortcut" type="button"><small>Flags to review</small><strong class="${count ? 'warning' : ''}">${count}</strong><small>View pending warnings →</small></button>`;
-    $('review-shortcut').onclick = () => {
-      state.preferences.filters = { ...emptyFilters, flag:'pending' };
-      page = 1;
-      syncFilters(); renderTable(); save();
-      $('transactions').scrollIntoView();
-      filterForm.elements.flag.focus({ preventScroll:true });
-    };
+      `<div class="metric"><small>Flags to review</small><strong class="${count ? 'warning' : ''}">${count}</strong>
+        <div class="flag-links"><a id="review-shortcut" href="#transactions">View pending warnings →</a>
+        <a id="flagged-shortcut" href="#transactions">View all flagged transactions (${flaggedCount}) →</a></div></div>`;
+    for (const [id, flag] of [['review-shortcut','pending'], ['flagged-shortcut','flagged']]) {
+      $(id).onclick = () => {
+        state.preferences.filters = { ...emptyFilters, flag };
+        page = 1;
+        syncFilters(); renderTable(); save();
+        $('table-wrap').scrollLeft = 0;
+        $('transactions').scrollIntoView();
+        $('transactions').focus({ preventScroll:true });
+      };
+    }
     const unconverted = ledger.filter(row => row.cad === null && (row.type === 'debit' || credits(row))).length;
     const undated = eligible.filter(row => !row.date && (row.type === 'debit' || credits(row))).length;
     $('coverage').textContent = `${monthLabel(today)} · CAD only. ${unconverted} purchase or credit records excluded from CAD aggregates (unknown currency or missing rate). ${undated} CAD records without dates excluded from time-based views.`;
@@ -369,8 +375,13 @@
     return esc(original(row));
   }
   function reviewCell(row) {
-    if (row.flags.length) return `<span class="warning" aria-label="Potential suspicion">⚑</span> ${esc(row.review || 'Needs review')}`;
-    return row.review ? esc(row.review) : '—';
+    if (row.flags.length) {
+      const status = row.review || 'Needs review';
+      return `<div class="review"><small class="flag-context">${esc(`${detailTime(row)} · ${cardName(row)} · ${original(row)}`)}</small>
+        <button type="button" class="review-link" data-detail="${esc(row.id)}" data-detail-source="warning" aria-label="${esc(`${status}: view warning details for ${row.merchant || row.bank || 'transaction'}${row.date ? ' on ' + row.date : ''}`)}">⚑ ${esc(status)}</button>
+        ${row.flags.map(reason => `<small>${esc(reasonText(reason,row))}</small>`).join('')}</div>`;
+    }
+    return row.review ? `<small>Review: ${esc(row.review)}</small>` : '';
   }
   function renderTable() {
     const { filters, pageSize, sort, descending } = state.preferences;
@@ -386,12 +397,13 @@
     page = Math.min(page, pages);
     const start = (page - 1) * pageSize;
     $('ledger').innerHTML = filtered.slice(start,start + pageSize).map(row => `<tr>
+      <td class="merchant">${esc(row.merchant || '—')}${reviewCell(row)}</td>
       <td>${esc(row.date || 'Unknown')}${row.time ? `<small>${esc([row.time,row.timezone].filter(Boolean).join(' '))}</small>` : ''}</td>
-      <td>${esc(row.merchant || '—')}</td><td>${esc(cardName(row))}</td>
+      <td>${esc(cardName(row))}</td>
       <td><select data-category="${esc(row.id)}" aria-label="${esc(`Category for ${row.merchant || 'unknown merchant'}`)}"${row.merchant ? '' : ' disabled'}>${categoryOpts(row.category)}</select></td>
-      <td>${esc(kinds[row.type])}</td><td class="amount">${amountCell(row)}</td><td>${reviewCell(row)}</td>
-      <td><button type="button" data-detail="${esc(row.id)}" aria-label="${esc(`Details for ${row.merchant || row.bank} ${row.date || ''}`)}">Details</button></td>
-    </tr>`).join('') || '<tr><td colspan="8">No transactions match these filters.</td></tr>';
+      <td>${esc(kinds[row.type])}</td><td class="amount">${amountCell(row)}</td>
+      <td><button type="button" data-detail="${esc(row.id)}" data-detail-source="sms" aria-label="${esc(`Details for ${row.merchant || row.bank} ${row.date || ''}`)}">Details</button></td>
+    </tr>`).join('') || '<tr><td colspan="7">No transactions match these filters.</td></tr>';
     for (const th of document.querySelectorAll('th[data-column]')) {
       const button = th.firstElementChild;
       button.textContent = button.textContent.replace(/ [↑↓]$/, '');
@@ -453,7 +465,7 @@
     $('remove-demo').disabled = !demoCount;
   }
   function renderAll() {
-    updateModel(); setTheme(); syncFilters(); renderMetrics(); renderCharts(); renderTable();
+    updateModel(); syncFilters(); renderMetrics(); renderCharts(); renderTable();
     renderBudgets(); renderUnparsed(); renderSettings();
   }
   function initializeControls() {
@@ -521,9 +533,11 @@
     ($('ledger').querySelector(`[data-category="${row.id}"]`) || $('match-count')).focus();
   });
   $('ledger').addEventListener('click', event => {
-    const id = event.target.closest('[data-detail]')?.dataset.detail;
+    const button = event.target.closest('[data-detail]');
+    const id = button?.dataset.detail;
     if (!id) return;
     activeDetail = id;
+    detailSource = button.dataset.detailSource;
     renderDetail(); $('detail').showModal();
   });
   $('detail').addEventListener('click', event => {
@@ -535,8 +549,11 @@
     $('detail').querySelector('button').focus();
   });
   $('detail').addEventListener('close', () => {
-    ($('ledger').querySelector(`[data-detail="${activeDetail}"]`) || $('clear')).focus();
+    const button = [...$('ledger').querySelectorAll('[data-detail]')]
+      .find(item => item.dataset.detail === activeDetail && item.dataset.detailSource === detailSource);
+    (button || $('match-count')).focus();
     activeDetail = null;
+    detailSource = '';
   });
   $('budget-month').onchange = event => { state.preferences.budgetMonth = event.target.value; renderBudgets(); save(); };
   $('budget-form').onsubmit = event => {
@@ -587,10 +604,6 @@
     const { category, words } = event.target.elements;
     state.mapping[category.value] = [...new Set(words.value.split(',').map(P.normalize).filter(Boolean))];
     save(); renderAll(); $('keyword-status').textContent = 'Category rules updated.';
-  };
-  $('theme').onclick = () => {
-    state.preferences.theme = state.preferences.theme === 'dark' ? 'light' : 'dark';
-    setTheme(); save();
   };
   $('remove-demo').onclick = () => {
     if (!confirm('Remove the demo messages? Imported messages and settings will be kept.')) return;
