@@ -1,5 +1,7 @@
 # Card Ledger
 
+**Developer:** Dayana
+
 Open [index.html](index.html) directly in a modern browser. Keep `parser.js` next to it. No build, server, dependencies,
 account, or internet connection is needed. The dashboard is a standalone utility; it does not post to the ERP or
 read its data.
@@ -36,6 +38,9 @@ distinct charge, select **Keep matching messages** and import just that charge.
 - Insights chart gross CAD purchases, before credits. Trend and weekday views need a date; undated purchases can
   still appear in the category, merchant, and card breakdowns. Budgets compare dated net CAD spend against recurring
   category targets for the selected month. Table filters do not change the overview, charts, or budgets.
+- Hyperlinks connect the sections: **View transactions** and **View budgets** at the top, a category name in the
+  **By category** chart (its purchases), and **View <category> transactions** on each budget (that category for the
+  selected budget month) open the Transactions table with the matching filters applied.
 - Search, sort, filter, and paginate the table. Use **Details** for the original SMS, available credit/limit, and
   warning reasons. Editing a category updates the merchant's exact-name override for past and future imports.
   Edit keyword lists in **Settings**; unmatched merchants default to Other.
@@ -45,7 +50,9 @@ distinct charge, select **Keep matching messages** and import just that charge.
 - Warnings flag eligible purchases above the configured CAD threshold, or purchases with the same bank/card, merchant,
   original amount and currency within ten minutes. Both purchases in a matching pair get flagged. Missing times or
   card numbers prevent matching; an explicit time zone is not compared with an unspecified time zone. Mark a warning
-  reviewed or not suspicious to clear it from the pending count without hiding the reason. Warnings are not proof of fraud.
+  reviewed or not suspicious to clear it from the pending count without hiding the reason. Use **View pending warnings**
+  or **View all flagged transactions** in the overview to find them; the table shows each warning's reason alongside
+  the merchant, and its status opens the review controls. Warnings are not proof of fraud.
 - **Export filtered CSV** includes all matching rows, not just the current page. It includes original and converted
   amounts, category, card, type, review status, warning reason, and raw SMS. Formula-like text cells are prefixed with
   an apostrophe to prevent spreadsheet evaluation. The CSV is not a full settings or unparsed-message backup.
