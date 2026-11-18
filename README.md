@@ -2,6 +2,8 @@
 
 **Developer:** Dayana
 
+**Live dashboard:** [Card Ledger on GitHub Pages](https://octobooth-19.github.io/card-ledger/)
+
 Open [index.html](index.html) directly in a modern browser. Keep `parser.js` next to it. No build, server, dependencies,
 account, or internet connection is needed. The dashboard is a standalone utility; it does not post to the ERP or
 read its data.
