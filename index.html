@@ -51,6 +51,11 @@
   .metrics{grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr))}
   .metric strong{display:block;font-size:clamp(1.12rem,2vw,1.58rem);letter-spacing:-.035em;margin:.27rem 0;overflow-wrap:anywhere}
   .flag-links{display:grid;gap:.35rem;justify-items:start;font-size:.8rem;font-weight:700}
+  .hero-links,.section-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .8rem}
+  .hero-links a{text-decoration:none}
+  .hero-links a:hover{border-color:var(--accent)}
+  .section-actions>a,.view-link{font-size:.8rem;font-weight:700}
+  .bar-row a{color:inherit;text-underline-offset:2px}
   .section-head{margin-bottom:.8rem}
   .grids{grid-template-columns:repeat(3,minmax(0,1fr))}
   .wide{grid-column:span 2}
@@ -116,7 +121,7 @@
   <section id="overview" aria-labelledby="heading">
     <div class="hero row">
       <div><p class="eyebrow">Personal finance · Canadian dollars</p><h1 id="heading">Your card activity</h1><p class="muted">Turn bank texts into a spending picture. Nothing leaves this browser.</p></div>
-      <a class="badge" href="#import">Import messages ↓</a>
+      <div class="hero-links"><a class="badge" href="#transactions">View transactions →</a><a class="badge" href="#budgets">View budgets →</a><a class="badge" href="#import">Import messages ↓</a></div>
     </div>
     <div id="metrics" class="metrics"></div>
     <p id="coverage" class="muted" style="margin-top:.6rem"></p>
@@ -132,7 +137,7 @@
     </div>
   </section>
   <section class="panel" id="transactions" aria-labelledby="transactions-title" tabindex="-1">
-    <div class="section-head"><div><h2 id="transactions-title">Transactions</h2><p class="muted">Flags are warnings, not proof of fraud. Compare flagged charges with your bank statement.</p></div><button id="export" type="button">Export filtered CSV</button></div>
+    <div class="section-head"><div><h2 id="transactions-title">Transactions</h2><p class="muted">Flags are warnings, not proof of fraud. Compare flagged charges with your bank statement.</p></div><div class="section-actions"><a href="#budgets">View budgets ↓</a><button id="export" type="button">Export filtered CSV</button></div></div>
     <form class="filters" id="filters">
       <label class="search">Search<input name="search" type="search" placeholder="Merchant, bank, card or SMS"></label>
       <label>From<input name="from" type="date"></label><label>Through<input name="to" type="date"></label>
@@ -159,7 +164,7 @@
     <div class="pagination"><label>Rows per page<select id="page-size"><option>10</option><option>20</option><option>50</option></select></label><button id="prev" type="button">Previous</button><span id="page-label" aria-live="polite"></span><button id="next" type="button">Next</button></div>
   </section>
   <section class="panel" id="budgets" aria-labelledby="budget-title">
-    <div class="section-head"><div><h2 id="budget-title">Monthly budgets</h2><p class="muted">Net CAD spending by category, after refunds. Budgets repeat each month; leave an amount blank to remove it.</p></div><label>Budget month<input id="budget-month" type="month"></label></div>
+    <div class="section-head"><div><h2 id="budget-title">Monthly budgets</h2><p class="muted">Net CAD spending by category, after refunds. Budgets repeat each month; leave an amount blank to remove it.</p></div><div class="section-actions"><a href="#transactions">View transactions ↑</a><label>Budget month<input id="budget-month" type="month"></label></div></div>
     <form id="budget-form" class="stack"><div id="budget-grid" class="budget-grid"></div><div class="row"><button type="submit">Save budgets</button><span id="budget-status" role="status"></span></div></form>
   </section>
   <section class="panel" id="import" aria-labelledby="import-title">
@@ -300,18 +305,8 @@
     $('metrics').innerHTML = metrics.map(([label, value, note]) =>
       `<div class="metric"><small>${esc(label)}</small><strong>${esc(value)}</strong><small>${esc(note)}</small></div>`).join('') +
       `<div class="metric"><small>Flags to review</small><strong class="${count ? 'warning' : ''}">${count}</strong>
-        <div class="flag-links"><a id="review-shortcut" href="#transactions">View pending warnings →</a>
-        <a id="flagged-shortcut" href="#transactions">View all flagged transactions (${flaggedCount}) →</a></div></div>`;
-    for (const [id, flag] of [['review-shortcut','pending'], ['flagged-shortcut','flagged']]) {
-      $(id).onclick = () => {
-        state.preferences.filters = { ...emptyFilters, flag };
-        page = 1;
-        syncFilters(); renderTable(); save();
-        $('table-wrap').scrollLeft = 0;
-        $('transactions').scrollIntoView();
-        $('transactions').focus({ preventScroll:true });
-      };
-    }
+        <div class="flag-links"><a id="review-shortcut" href="#transactions" data-view='{"flag":"pending"}'>View pending warnings →</a>
+        <a id="flagged-shortcut" href="#transactions" data-view='{"flag":"flagged"}'>View all flagged transactions (${flaggedCount}) →</a></div></div>`;
     const unconverted = ledger.filter(row => row.cad === null && (row.type === 'debit' || credits(row))).length;
     const undated = eligible.filter(row => !row.date && (row.type === 'debit' || credits(row))).length;
     $('coverage').textContent = `${monthLabel(today)} · CAD only. ${unconverted} purchase or credit records excluded from CAD aggregates (unknown currency or missing rate). ${undated} CAD records without dates excluded from time-based views.`;
@@ -325,10 +320,11 @@
     return sums;
   }
   const amountOrder = (a,b) => a[1] > b[1] ? -1 : a[1] < b[1] ? 1 : a[0].localeCompare(b[0]);
-  function bars(id, values) {
+  const viewLink = (label, filters) => `<a href="#transactions" data-view="${esc(JSON.stringify(filters))}">${esc(label)}</a>`;
+  function bars(id, values, link) {
     if (!values.length) { $(id).innerHTML = '<p class="muted">No eligible purchases.</p>'; return; }
     const max = values.reduce((n, [,value]) => value > n ? value : n, 1n);
-    $(id).innerHTML = values.map(([label,value]) => `<div class="bar-row"><span>${esc(label)}</span><svg aria-hidden="true" viewBox="0 0 1000 8" preserveAspectRatio="none"><rect width="1000" height="8" fill="var(--wash)"/><rect width="${value * 1000n / max}" height="8" fill="var(--chart)"/></svg><span>${money(value)}</span></div>`).join('');
+    $(id).innerHTML = values.map(([label,value]) => `<div class="bar-row"><span>${link ? viewLink(label, link(label)) : esc(label)}</span><svg aria-hidden="true" viewBox="0 0 1000 8" preserveAspectRatio="none"><rect width="1000" height="8" fill="var(--wash)"/><rect width="${value * 1000n / max}" height="8" fill="var(--chart)"/></svg><span>${money(value)}</span></div>`).join('');
   }
   function renderCharts() {
     const purchases = ledger.filter(row => row.type === 'debit' && row.cad !== null);
@@ -345,7 +341,7 @@
         <polyline points="${points.map(p => p.join(',')).join(' ')}" fill="none" stroke="var(--chart)" stroke-width="3" stroke-linejoin="round"/>
         ${points.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="4" fill="var(--chart)"/>`).join('')}
       </svg><div class="trend-values">${months.map((d,i) => `<span>${esc(monthLabel(d))}<strong>${money(trend[i])}</strong></span>`).join('')}</div>`;
-    bars('by-category', [...group(purchases, row => row.category)].sort(amountOrder));
+    bars('by-category', [...group(purchases, row => row.category)].sort(amountOrder), category => ({ category, type:'debit' }));
     bars('by-merchant', [...group(purchases, row => row.merchant || 'Unknown merchant')].sort(amountOrder).slice(0,10));
     const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
     const weekday = group(dated, row => days[(new Date(`${row.date}T00:00Z`).getUTCDay()+6)%7]);
@@ -422,6 +418,8 @@
   function renderBudgets() {
     const month = $('budget-month').value || monthKey(now());
     const monthly = ledger.filter(row => row.cad !== null && row.date?.startsWith(month));
+    const [year, monthNumber] = month.split('-').map(Number);
+    const range = { from:`${month}-01`, to:`${month}-${String(new Date(year, monthNumber, 0).getDate()).padStart(2, '0')}` };
     $('budget-grid').innerHTML = P.categories.map(category => {
       const diff = total(monthly.filter(row => row.category === category), signed);
       const limit = P.cents(state.budgets[category] || '');
@@ -429,7 +427,8 @@
       const percent = diff <= 0n ? 0 : over ? 100 : limit > 0n ? Number(diff * 100n / limit) : 0;
       return `<div class="budget-item stack"><label>${category} budget (CAD)<input name="${category}" inputmode="decimal" value="${esc(state.budgets[category] || '')}" placeholder="Not set"></label>
         ${limit !== null ? `<progress class="${over ? 'over' : ''}" value="${percent}" max="100" aria-label="${category} budget usage"></progress>` : ''}
-        <p class="${over ? 'warning' : 'muted'}">${money(diff)} net${over ? ` · ${money(diff - limit)} over budget` : limit === null ? ' · No budget' : ` of ${money(limit)}`}</p></div>`;
+        <p class="${over ? 'warning' : 'muted'}">${money(diff)} net${over ? ` · ${money(diff - limit)} over budget` : limit === null ? ' · No budget' : ` of ${money(limit)}`}</p>
+        <span class="view-link">${viewLink(`View ${category} transactions →`, { ...range, category })}</span></div>`;
     }).join('');
   }
   function renderUnparsed() {
@@ -517,6 +516,16 @@
     state.preferences.descending = state.preferences.sort === sort ? !state.preferences.descending : ['when','value'].includes(sort);
     state.preferences.sort = sort;
     page = 1; renderTable(); save();
+  });
+  document.addEventListener('click', event => {
+    const link = event.target.closest('a[data-view]');
+    if (!link) return;
+    state.preferences.filters = { ...emptyFilters, ...JSON.parse(link.dataset.view) };
+    page = 1;
+    syncFilters(); renderTable(); save();
+    $('table-wrap').scrollLeft = 0;
+    $('transactions').scrollIntoView();
+    $('transactions').focus({ preventScroll:true });
   });
   $('page-size').onchange = event => {
     state.preferences.pageSize = Number(event.target.value);

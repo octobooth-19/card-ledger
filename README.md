@@ -38,6 +38,9 @@ distinct charge, select **Keep matching messages** and import just that charge.
 - Insights chart gross CAD purchases, before credits. Trend and weekday views need a date; undated purchases can
   still appear in the category, merchant, and card breakdowns. Budgets compare dated net CAD spend against recurring
   category targets for the selected month. Table filters do not change the overview, charts, or budgets.
+- Hyperlinks connect the sections: **View transactions** and **View budgets** at the top, a category name in the
+  **By category** chart (its purchases), and **View <category> transactions** on each budget (that category for the
+  selected budget month) open the Transactions table with the matching filters applied.
 - Search, sort, filter, and paginate the table. Use **Details** for the original SMS, available credit/limit, and
   warning reasons. Editing a category updates the merchant's exact-name override for past and future imports.
   Edit keyword lists in **Settings**; unmatched merchants default to Other.
